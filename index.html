@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>University Timetable</title>
+    <!-- Modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <!-- Theme Toggle -->
+    <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Dark Mode">
+        <span class="icon-dark">🌙</span>
+        <span class="icon-light">☀️</span>
+    </button>
+
+    <div class="container">
+        <!-- Input View -->
+        <form id="input-view" class="card">
+            <h2 class="title-primary">Timetable Setup</h2>
+
+            <div class="input-group">
+                <label for="studentName" class="input-label">Student Name</label>
+                <input type="text" id="studentName" class="name-input" placeholder="Enter your name" required>
+            </div>
+
+            <div class="input-group">
+                <label for="courseInput" class="input-label">Course Registration Data</label>
+                <textarea id="courseInput" placeholder="Paste your VTOP Course Registration table here..."
+                    required></textarea>
+            </div>
+
+            <div class="session-toggle">
+                <strong class="session-label">Schedule Pattern:</strong>
+                <label class="radio-label">
+                    <input type="radio" name="sess" id="mornTheory" value="morning"> Morning Theory
+                </label>
+                <label class="radio-label">
+                    <input type="radio" name="sess" id="mornLab" value="evening" checked> Evening Theory
+                </label>
+            </div>
+
+            <button type="submit" id="generate-btn" class="btn-primary">Generate Timetable</button>
+        </form>
+
+        <!-- Output View (Initially Hidden) -->
+        <div id="output-view" class="hidden">
+            <div class="header-actions">
+                <div class="welcome-container">
+                    <h1 class="welcome-text">Hello, <span id="display-name" class="highlight-name">Student</span>.</h1>
+                    <p class="welcome-sub">Here is your schedule. <span id="live-status" class="live-status"></span></p>
+                </div>
+                <button id="reset-btn" class="reset-btn">Reset & Edit</button>
+            </div>
+
+            <div class="table-container">
+                <table id="timetable">
+                    <thead id="head"></thead>
+                    <tbody id="body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal (Course Hub) -->
+    <div id="detailModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header" id="modalHeader">
+                <button id="close-modal-btn" class="close-btn">✕</button>
+                <h3 class="modal-title" id="courseName">Course Name</h3>
+                <span class="modal-subtitle" id="courseCode">Code</span>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="tab-nav" id="tabNav">
+                <button class="tab-btn active" data-tab="overview">Overview</button>
+                <button class="tab-btn" data-tab="syllabus">Syllabus</button>
+                <button class="tab-btn" data-tab="assignments">Assign.</button>
+                <button class="tab-btn" data-tab="performance">Marks</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Tab: Overview -->
+                <div id="tab-overview" class="tab-content active">
+                    <div class="detail-row">
+                        <div class="detail-icon">👨‍🏫</div>
+                        <div class="detail-info">
+                            <h4>Faculty</h4>
+                            <p id="facultyName">Name</p>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-icon">🏫</div>
+                        <div class="detail-info">
+                            <h4>Venue</h4>
+                            <p id="venueName">Venue</p>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-icon">⏰</div>
+                        <div class="detail-info">
+                            <h4>Slots</h4>
+                            <p id="slotList">Slots</p>
+                        </div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-icon">🎓</div>
+                        <div class="detail-info">
+                            <h4>School</h4>
+                            <p id="schoolName">School</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Syllabus -->
+                <div id="tab-syllabus" class="tab-content">
+                    <div class="add-item-row">
+                        <input type="text" id="newTopic" class="modal-input" placeholder="Add topic (e.g. Module 1)">
+                        <button id="add-syllabus-btn" class="add-btn">+</button>
+                    </div>
+                    <ul id="syllabusList" class="task-list"></ul>
+                </div>
+
+                <!-- Tab: Assignments -->
+                <div id="tab-assignments" class="tab-content">
+                    <div class="add-item-row">
+                        <input type="text" id="newAssign" class="modal-input" placeholder="Assignment Title" required>
+                        <input type="date" id="newAssignDate" class="modal-input" style="max-width: 130px;">
+                        <button id="add-assign-btn" class="add-btn">+</button>
+                    </div>
+                    <ul id="assignList" class="task-list" style="margin-top: 10px;"></ul>
+                </div>
+
+                <!-- Tab: Performance (Marks) -->
+                <div id="tab-performance" class="tab-content">
+                    <p id="marksError" class="marks-error-msg hidden"></p>
+                    <div class="marks-grid">
+                        <div class="mark-group" id="group-cat1">
+                            <label id="label-cat1">CAT 1 (50)</label>
+                            <div class="input-wrapper">
+                                <input type="number" id="mark-cat1" class="modal-input mark-input" min="0"
+                                    placeholder="0">
+                            </div>
+                        </div>
+                        <div class="mark-group" id="group-cat2">
+                            <label id="label-cat2">CAT 2 (50)</label>
+                            <div class="input-wrapper">
+                                <input type="number" id="mark-cat2" class="modal-input mark-input" min="0"
+                                    placeholder="0">
+                            </div>
+                        </div>
+                        <div class="mark-group">
+                            <label id="label-internal">INTERNAL (30)</label>
+                            <div class="input-wrapper">
+                                <input type="number" id="mark-internal" class="modal-input mark-input" min="0"
+                                    placeholder="0">
+                            </div>
+                        </div>
+                        <div class="mark-group">
+                            <label id="label-fat">FAT (100)</label>
+                            <div class="input-wrapper">
+                                <input type="number" id="mark-fat" class="modal-input mark-input" min="0"
+                                    placeholder="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="total-score">
+                        Total: <span id="totalMarks">0.0</span> / 100
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <label class="input-label">Quick Notes / Links</label>
+                        <textarea id="courseNotes" class="modal-input" style="height: 80px; resize: none;"
+                            placeholder="Drive link or key notes..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
