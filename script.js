@@ -69,6 +69,7 @@ function loadState() {
     }
 
     if (appState.sessionPref === 'morning') document.getElementById('mornTheory').checked = true;
+    else if (appState.sessionPref === 'mixed') document.getElementById('mixedSlots').checked = true;
     else document.getElementById('mornLab').checked = true;
 
     if (appState.timetableDataRaw && appState.studentName) {
@@ -180,12 +181,13 @@ function generateTimetable() {
     const input = document.getElementById('courseInput').value;
     const name = document.getElementById('studentName').value.trim();
     const isMT = document.getElementById('mornTheory').checked;
+    const isMixed = document.getElementById('mixedSlots').checked;
 
     if (!name || !input.trim()) return;
 
     appState.timetableDataRaw = input;
     appState.studentName = name;
-    appState.sessionPref = isMT ? 'morning' : 'evening';
+    appState.sessionPref = isMixed ? 'mixed' : (isMT ? 'morning' : 'evening');
 
     localStorage.setItem('timetable_data', input);
     localStorage.setItem('student_name', name);
@@ -241,7 +243,13 @@ function getColor(code) {
 
 function renderTable() {
     const isMT = appState.sessionPref === 'morning';
+    const isMixed = appState.sessionPref === 'mixed';
     const days = ['MON', 'TUE', 'WED', 'THU', 'FRI'];
+
+    if (isMixed) {
+        renderMixedTable(days);
+        return;
+    }
 
     // Exact mapping for Live Indicator
     const mTimes = isMT ?
@@ -273,6 +281,120 @@ function renderTable() {
 
         if (isMT) eveningLabs.slice(index * 6, (index * 6) + 6).forEach(s => row += createCell(s));
         else eveningTheorySlots[day].forEach(s => row += createCell(s));
+
+        bHtml += row + "</tr>";
+    });
+    document.getElementById('body').innerHTML = bHtml;
+
+    // Attach click listeners to cells
+    const cells = document.querySelectorAll('.course-cell');
+    cells.forEach(cell => {
+        cell.addEventListener('click', () => {
+            openDetails(cell.getAttribute('data-code'));
+        });
+    });
+}
+
+/**
+ * Mixed timetable: shows both THEORY and LAB times in dual-row header.
+ * Morning half has 6 columns (theory fills 1-5, lab fills 1-6).
+ * Evening half has 6 columns (theory fills 1-5, lab fills 1-6).
+ * Total: DAY + 6 morning + LUNCH + 6 evening + trailing = 14 columns.
+ */
+function renderMixedTable(days) {
+    // Morning Theory times (5 slots) — pad 6th as "-"
+    const mTheoryTimes = ["08:00-08:50", "09:00-09:50", "10:00-10:50", "11:00-11:50", "12:00-12:50", "-"];
+    // Morning Lab times (6 slots)
+    const mLabTimes    = ["08:00-08:50", "08:51-09:40", "09:51-10:40", "10:41-11:30", "11:40-12:30", "12:31-13:20"];
+    // Evening Theory times (5 slots) — pad 6th as "-"
+    const eTheoryTimes = ["14:00-14:50", "15:00-15:50", "16:00-16:50", "17:00-17:50", "18:00-18:50", "-"];
+    // Evening Lab times (6 slots)
+    const eLabTimes    = ["14:00-14:50", "14:51-15:40", "15:51-16:40", "16:41-17:30", "17:40-18:30", "18:31-19:20"];
+
+    // Build dual-row header
+    // Row 1: THEORY times
+    let headerHtml = `<tr class="mixed-header-theory">`;
+    headerHtml += `<th rowspan="2" style="border-top-left-radius: 16px; vertical-align: middle;">DAY</th>`;
+    mTheoryTimes.forEach(t => {
+        if (t === '-') {
+            headerHtml += `<th class="mixed-time-empty">-</th>`;
+        } else {
+            headerHtml += `<th class="mixed-theory-th" data-time="${t}">${t.replace('-', ' - ')}</th>`;
+        }
+    });
+    headerHtml += `<th rowspan="2" class="lunch-col-header" style="width: 80px; vertical-align: middle;">LUNCH</th>`;
+    eTheoryTimes.forEach((t, i) => {
+        if (t === '-') {
+            headerHtml += `<th class="mixed-time-empty" ${i === eTheoryTimes.length - 1 ? 'style="border-top-right-radius: 16px;"' : ''}>-</th>`;
+        } else {
+            headerHtml += `<th class="mixed-theory-th" data-time="${t}" ${i === eTheoryTimes.length - 1 ? 'style="border-top-right-radius: 16px;"' : ''}>${t.replace('-', ' - ')}</th>`;
+        }
+    });
+    headerHtml += `</tr>`;
+
+    // Row 2: LAB times
+    headerHtml += `<tr class="mixed-header-lab">`;
+    mLabTimes.forEach(t => {
+        headerHtml += `<th class="mixed-lab-th" data-time="${t}">${t.replace('-', ' - ')}</th>`;
+    });
+    eLabTimes.forEach((t, i) => {
+        headerHtml += `<th class="mixed-lab-th" data-time="${t}">${t.replace('-', ' - ')}</th>`;
+    });
+    headerHtml += `</tr>`;
+
+    document.getElementById('head').innerHTML = headerHtml;
+
+    // Build body rows
+    // Each day: 6 morning columns + lunch + 6 evening columns
+    // For each column, check BOTH theory and lab slots and use whichever is occupied
+    let bHtml = "";
+    days.forEach((day, index) => {
+        let row = `<tr data-day="${day}"><td>${day}</td>`;
+
+        // Morning: 6 columns
+        // Theory slots for this day: theorySlots[day] has 5 entries (indices 0-4)
+        // Lab slots for this day: morningLabs, 6 per day
+        const dayTheory = theorySlots[day]; // 5 slots
+        const dayMornLabs = morningLabs.slice(index * 6, index * 6 + 6); // 6 slots
+
+        for (let col = 0; col < 6; col++) {
+            const theorySlot = col < dayTheory.length ? dayTheory[col] : null;
+            const labSlot = dayMornLabs[col];
+
+            // Check if theory slot has a course
+            const theoryCourse = theorySlot ? appState.slotToCourse[theorySlot] : null;
+            const labCourse = labSlot ? appState.slotToCourse[labSlot] : null;
+
+            if (theoryCourse) {
+                row += createCell(theorySlot);
+            } else if (labCourse) {
+                row += createCell(labSlot);
+            } else {
+                row += `<td class="empty-cell"></td>`;
+            }
+        }
+
+        row += `<td class="lunch-col">LUNCH</td>`;
+
+        // Evening: 6 columns
+        const dayEveTheory = eveningTheorySlots[day]; // 5 slots
+        const dayEveLabs = eveningLabs.slice(index * 6, index * 6 + 6); // 6 slots
+
+        for (let col = 0; col < 6; col++) {
+            const theorySlot = col < dayEveTheory.length ? dayEveTheory[col] : null;
+            const labSlot = dayEveLabs[col];
+
+            const theoryCourse = theorySlot ? appState.slotToCourse[theorySlot] : null;
+            const labCourse = labSlot ? appState.slotToCourse[labSlot] : null;
+
+            if (theoryCourse) {
+                row += createCell(theorySlot);
+            } else if (labCourse) {
+                row += createCell(labSlot);
+            } else {
+                row += `<td class="empty-cell"></td>`;
+            }
+        }
 
         bHtml += row + "</tr>";
     });

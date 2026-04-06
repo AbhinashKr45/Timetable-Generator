@@ -45,6 +45,10 @@
     --danger-text: #ef4444;
     --danger-border: #fca5a5;
 
+    --warning-bg: #fef3c7;
+    --warning-text: #92400e;
+    --warning-border: #fde68a;
+
     --success-bg: #dcfce7;
     --success-text: #15803d;
 }
@@ -90,9 +94,13 @@
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7);
     --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
 
-    --danger-bg: #7f1d1d;
+    --danger-bg: #450a0a;
     --danger-text: #fca5a5;
     --danger-border: #991b1b;
+
+    --warning-bg: #451a03;
+    --warning-text: #fde68a;
+    --warning-border: #92400e;
 
     --success-bg: #14532d;
     --success-text: #86efac;
@@ -240,6 +248,7 @@ textarea:focus,
     border-radius: 12px;
     margin: 20px 0;
     display: flex;
+    flex-wrap: wrap;
     gap: 24px;
     align-items: center;
     border: 1px solid var(--border-color);
@@ -682,8 +691,9 @@ tr.active-day td:first-child {
 
 /* Due Soon Indicator */
 .task-item.due-soon:not(.completed) {
-    background: #fef3c7;
-    border-color: #fde68a;
+    background: #691313;
+    border-color: #fa1616;
+    color: #faf4f4;
 }
 
 .task-item.overdue:not(.completed) {
@@ -701,7 +711,7 @@ tr.active-day td:first-child {
 }
 
 .badge-soon {
-    background: #f59e0b;
+    background: #f92727;
 }
 
 .badge-overdue {
@@ -773,6 +783,67 @@ tr.active-day td:first-child {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+/* Mixed Timetable Header Rows */
+.mixed-header-theory th,
+.mixed-header-lab th {
+    font-size: 11px;
+    height: 40px;
+    padding: 6px 4px;
+    white-space: nowrap;
+}
+
+.mixed-theory-th {
+    background: #4338ca !important;
+    color: #e0e7ff !important;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.15) !important;
+    position: relative;
+}
+
+.mixed-theory-th::before {
+    content: 'T';
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-size: 8px;
+    font-weight: 800;
+    opacity: 0.5;
+    letter-spacing: 0.5px;
+}
+
+.mixed-lab-th {
+    background: #0f766e !important;
+    color: #ccfbf1 !important;
+    position: relative;
+}
+
+.mixed-lab-th::before {
+    content: 'L';
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    font-size: 8px;
+    font-weight: 800;
+    opacity: 0.5;
+    letter-spacing: 0.5px;
+}
+
+.mixed-time-empty {
+    background: var(--bg-th) !important;
+    color: var(--text-th) !important;
+    opacity: 0.5;
+    font-size: 10px !important;
+}
+
+[data-theme="dark"] .mixed-theory-th {
+    background: #312e81 !important;
+    color: #c7d2fe !important;
+}
+
+[data-theme="dark"] .mixed-lab-th {
+    background: #134e4a !important;
+    color: #99f6e4 !important;
 }
 
 ::-webkit-scrollbar {
