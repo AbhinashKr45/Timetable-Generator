@@ -691,7 +691,7 @@ tr.active-day td:first-child {
 
 /* Due Soon Indicator */
 .task-item.due-soon:not(.completed) {
-    background: #691313;
+    background: #cb4308;
     border-color: #fa1616;
     color: #faf4f4;
 }
@@ -711,11 +711,20 @@ tr.active-day td:first-child {
 }
 
 .badge-soon {
-    background: #f92727;
+    background: #ea580c !important;
+    /* Vivid orange alert */
+    color: #ffffff !important;
 }
 
 .badge-overdue {
-    background: var(--danger-text);
+    background: #dc2626 !important;
+    /* Vivid red alert */
+    color: #ffffff !important;
+}
+
+.badge-normal {
+    background: var(--primary) !important;
+    color: #ffffff !important;
 }
 
 .delete-icon {
@@ -862,6 +871,163 @@ tr.active-day td:first-child {
 
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
+}
+
+/* Day View Styles */
+.action-buttons {
+    display: flex;
+    gap: 15px;
+}
+
+.day-toggle-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 25px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.day-btn {
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 2px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-main);
+    cursor: pointer;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all 0.3s;
+}
+
+.day-btn:hover {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.day-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.4);
+}
+
+.day-classes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-bottom: 20px;
+}
+
+.day-class-card {
+    background: var(--bg-card);
+    padding: 20px;
+    border-radius: 16px;
+    border-left: 8px solid var(--primary);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.day-class-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.day-class-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.day-class-info h3 {
+    margin: 0;
+    font-size: 1.15rem;
+    color: var(--text-main);
+}
+
+.class-venue {
+    font-size: 0.8rem;
+    background: var(--bg-input);
+    padding: 3px 8px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    display: inline-block;
+    font-weight: 700;
+}
+
+.day-class-info p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.day-class-time {
+    font-weight: 800;
+    color: var(--primary);
+    background: var(--bg-day);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.95rem;
+}
+
+.lunch-break-card {
+    background: var(--bg-lunch);
+    border-left: 8px solid var(--bg-lunch-th);
+    opacity: 0.9;
+    cursor: default;
+}
+
+.lunch-break-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.lunch-break-card .day-class-time {
+    color: var(--text-lunch);
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.lunch-break-card h3 {
+    color: var(--text-lunch) !important;
+}
+
+.no-classes-msg {
+    text-align: center;
+    padding: 30px;
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 2px dashed var(--border-color);
+}
+
+.view-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s;
+}
+
+.view-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.view-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 @media (max-width: 768px) {

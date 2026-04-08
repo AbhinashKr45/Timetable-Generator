@@ -29,7 +29,9 @@ const appState = {
     sessionPref: "evening", /* morning or evening */
     timetableDataRaw: "",
     liveInterval: null,
-    errorTimeout: null
+    errorTimeout: null,
+    currentViewMode: 'table',
+    selectedDayView: 'MON'
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -94,6 +96,72 @@ function attachGlobalListeners() {
     document.getElementById('input-view').addEventListener('submit', (e) => {
         e.preventDefault();
         generateTimetable();
+    });
+
+    // View Selectors
+    const toggleViewBtn = document.getElementById('toggle-view-btn');
+    const tasksBtn = document.getElementById('tasks-btn');
+    const tableContainer = document.getElementById('table-container');
+    const dayView = document.getElementById('day-view');
+    const assignsView = document.getElementById('assignments-view');
+
+    function hideAllViews() {
+        tableContainer.classList.add('hidden');
+        dayView.classList.add('hidden');
+        assignsView.classList.add('hidden');
+        toggleViewBtn.classList.remove('active');
+        tasksBtn.classList.remove('active');
+    }
+
+    toggleViewBtn.addEventListener('click', () => {
+        hideAllViews();
+        toggleViewBtn.classList.add('active');
+        
+        if (appState.currentViewMode === 'table' || appState.currentViewMode === 'assignments') {
+            // Switch to Day
+            appState.currentViewMode = 'day';
+            dayView.classList.remove('hidden');
+            toggleViewBtn.innerText = 'Table View';
+            
+            const now = new Date();
+            const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+            let todayStr = days[now.getDay()];
+            if (todayStr === 'SUN' || todayStr === 'SAT') todayStr = 'MON';
+            
+            document.querySelectorAll('.day-btn').forEach(b => {
+                if(b.getAttribute('data-day') === todayStr) b.classList.add('active');
+                else b.classList.remove('active');
+            });
+            appState.selectedDayView = todayStr;
+            renderDayView(todayStr);
+        } else {
+            // Switch to Table
+            appState.currentViewMode = 'table';
+            tableContainer.classList.remove('hidden');
+            toggleViewBtn.innerText = 'Day View';
+            toggleViewBtn.classList.remove('active'); // No active styling for default table view
+        }
+    });
+
+    tasksBtn.addEventListener('click', () => {
+        hideAllViews();
+        tasksBtn.classList.add('active');
+        appState.currentViewMode = 'assignments';
+        assignsView.classList.remove('hidden');
+        renderGlobalAssignments();
+        // Reset toggle button text contextually
+        toggleViewBtn.innerText = 'Day View';
+    });
+
+    // Day Toggle Buttons
+    document.querySelectorAll('.day-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.day-btn').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            const day = e.target.getAttribute('data-day');
+            appState.selectedDayView = day;
+            renderDayView(day);
+        });
     });
 
     // Reset App
@@ -172,6 +240,16 @@ function showView(view) {
         document.getElementById('output-view').classList.remove('hidden');
         document.getElementById('display-name').innerText = appState.studentName;
         document.title = `Timetable - ${appState.studentName}`;
+        
+        appState.currentViewMode = 'table';
+        document.getElementById('table-container').classList.remove('hidden');
+        document.getElementById('day-view').classList.add('hidden');
+        document.getElementById('assignments-view').classList.add('hidden');
+        
+        document.getElementById('toggle-view-btn').innerText = 'Day View';
+        document.getElementById('toggle-view-btn').classList.remove('active');
+        document.getElementById('tasks-btn').classList.remove('active');
+
         startLiveIndicator();
     }
 }
@@ -270,17 +348,18 @@ function renderTable() {
     headerHtml += `</tr>`;
     document.getElementById('head').innerHTML = headerHtml;
 
+    const lunchTime = isMT ? "12:51-13:59" : "13:21-13:59";
     let bHtml = "";
     days.forEach((day, index) => {
         let row = `<tr data-day="${day}"><td>${day}</td>`;
 
-        if (isMT) theorySlots[day].forEach(s => row += createCell(s));
-        else morningLabs.slice(index * 6, (index * 6) + 6).forEach(s => row += createCell(s));
+        if (isMT) theorySlots[day].forEach((s, i) => row += createCell(s, mTimes[i]));
+        else morningLabs.slice(index * 6, (index * 6) + 6).forEach((s, i) => row += createCell(s, mTimes[i]));
 
-        row += `<td class="lunch-col">LUNCH</td>`;
+        row += `<td class="lunch-col" data-time="${lunchTime}">LUNCH</td>`;
 
-        if (isMT) eveningLabs.slice(index * 6, (index * 6) + 6).forEach(s => row += createCell(s));
-        else eveningTheorySlots[day].forEach(s => row += createCell(s));
+        if (isMT) eveningLabs.slice(index * 6, (index * 6) + 6).forEach((s, i) => row += createCell(s, eTimes[i]));
+        else eveningTheorySlots[day].forEach((s, i) => row += createCell(s, eTimes[i]));
 
         bHtml += row + "</tr>";
     });
@@ -351,34 +430,29 @@ function renderMixedTable(days) {
     days.forEach((day, index) => {
         let row = `<tr data-day="${day}"><td>${day}</td>`;
 
-        // Morning: 6 columns
-        // Theory slots for this day: theorySlots[day] has 5 entries (indices 0-4)
-        // Lab slots for this day: morningLabs, 6 per day
-        const dayTheory = theorySlots[day]; // 5 slots
-        const dayMornLabs = morningLabs.slice(index * 6, index * 6 + 6); // 6 slots
+        const dayTheory = theorySlots[day];
+        const dayMornLabs = morningLabs.slice(index * 6, index * 6 + 6);
 
         for (let col = 0; col < 6; col++) {
             const theorySlot = col < dayTheory.length ? dayTheory[col] : null;
             const labSlot = dayMornLabs[col];
 
-            // Check if theory slot has a course
             const theoryCourse = theorySlot ? appState.slotToCourse[theorySlot] : null;
             const labCourse = labSlot ? appState.slotToCourse[labSlot] : null;
 
             if (theoryCourse) {
-                row += createCell(theorySlot);
+                row += createCell(theorySlot, mTheoryTimes[col]);
             } else if (labCourse) {
-                row += createCell(labSlot);
+                row += createCell(labSlot, mLabTimes[col]);
             } else {
-                row += `<td class="empty-cell"></td>`;
+                row += `<td class="empty-cell" data-time="${mLabTimes[col]}"></td>`;
             }
         }
 
-        row += `<td class="lunch-col">LUNCH</td>`;
+        row += `<td class="lunch-col" data-time="13:21-13:59">LUNCH</td>`;
 
-        // Evening: 6 columns
-        const dayEveTheory = eveningTheorySlots[day]; // 5 slots
-        const dayEveLabs = eveningLabs.slice(index * 6, index * 6 + 6); // 6 slots
+        const dayEveTheory = eveningTheorySlots[day];
+        const dayEveLabs = eveningLabs.slice(index * 6, index * 6 + 6);
 
         for (let col = 0; col < 6; col++) {
             const theorySlot = col < dayEveTheory.length ? dayEveTheory[col] : null;
@@ -388,11 +462,11 @@ function renderMixedTable(days) {
             const labCourse = labSlot ? appState.slotToCourse[labSlot] : null;
 
             if (theoryCourse) {
-                row += createCell(theorySlot);
+                row += createCell(theorySlot, eTheoryTimes[col]);
             } else if (labCourse) {
-                row += createCell(labSlot);
+                row += createCell(labSlot, eLabTimes[col]);
             } else {
-                row += `<td class="empty-cell"></td>`;
+                row += `<td class="empty-cell" data-time="${eLabTimes[col]}"></td>`;
             }
         }
 
@@ -409,16 +483,135 @@ function renderMixedTable(days) {
     });
 }
 
-function createCell(slot) {
+function createCell(slot, timeRange) {
     const code = appState.slotToCourse[slot];
-    if (!code) return `<td class="empty-cell"></td>`;
+    const timeAttr = timeRange ? ` data-time="${timeRange}"` : '';
+    if (!code) return `<td class="empty-cell"${timeAttr}></td>`;
     const c = appState.courseDatabase[code];
     const color = getColor(code);
-    return `<td class="course-cell" style="background-color: ${color}; color: #111827;" data-code="${code}">
+    return `<td class="course-cell" style="background-color: ${color}; color: #111827;" data-code="${code}"${timeAttr}>
             <span class="course-code">${code}</span>
             <span class="venue-badge">${c.venue}</span>
             <span class="faculty-name">${c.faculty}</span>
         </td>`;
+}
+
+// --- DAY VIEW RENDERING ---
+function getClassesForDay(day) {
+    const isMT = appState.sessionPref === 'morning';
+    const isMixed = appState.sessionPref === 'mixed';
+    const dayIndex = ['MON', 'TUE', 'WED', 'THU', 'FRI'].indexOf(day);
+    if (dayIndex === -1) return [];
+
+    let classes = [];
+
+    if (isMixed) {
+        const mTheoryTimes = ["08:00-08:50", "09:00-09:50", "10:00-10:50", "11:00-11:50", "12:00-12:50"];
+        const mLabTimes    = ["08:00-08:50", "08:51-09:40", "09:51-10:40", "10:41-11:30", "11:40-12:30", "12:31-13:20"];
+        const eTheoryTimes = ["14:00-14:50", "15:00-15:50", "16:00-16:50", "17:00-17:50", "18:00-18:50"];
+        const eLabTimes    = ["14:00-14:50", "14:51-15:40", "15:51-16:40", "16:41-17:30", "17:40-18:30", "18:31-19:20"];
+
+        const dayTheory = theorySlots[day];
+        const dayMornLabs = morningLabs.slice(dayIndex * 6, dayIndex * 6 + 6);
+        
+        for (let col = 0; col < 6; col++) {
+            const theorySlot = col < dayTheory.length ? dayTheory[col] : null;
+            const labSlot = dayMornLabs[col];
+
+            const theoryCourse = theorySlot ? appState.slotToCourse[theorySlot] : null;
+            const labCourse = labSlot ? appState.slotToCourse[labSlot] : null;
+
+            if (theoryCourse) classes.push({ time: mTheoryTimes[col], code: theoryCourse });
+            else if (labCourse) classes.push({ time: mLabTimes[col], code: labCourse });
+        }
+
+        classes.push({ time: "13:21-13:59", type: "lunch" });
+
+        const dayEveTheory = eveningTheorySlots[day];
+        const dayEveLabs = eveningLabs.slice(dayIndex * 6, dayIndex * 6 + 6);
+
+        for (let col = 0; col < 6; col++) {
+            const theorySlot = col < dayEveTheory.length ? dayEveTheory[col] : null;
+            const labSlot = dayEveLabs[col];
+
+            const theoryCourse = theorySlot ? appState.slotToCourse[theorySlot] : null;
+            const labCourse = labSlot ? appState.slotToCourse[labSlot] : null;
+
+            if (theoryCourse) classes.push({ time: eTheoryTimes[col], code: theoryCourse });
+            else if (labCourse) classes.push({ time: eLabTimes[col], code: labCourse });
+        }
+    } else {
+        const mTimes = isMT ? 
+            ["08:00-08:50", "09:00-09:50", "10:00-10:50", "11:00-11:50", "12:00-12:50"] : 
+            ["08:00-08:50", "08:51-09:40", "09:51-10:40", "10:41-11:30", "11:40-12:30", "12:31-13:20"];
+
+        const eTimes = isMT ? 
+            ["14:00-14:50", "14:51-15:40", "15:51-16:40", "16:41-17:30", "17:40-18:30", "18:31-19:20"] : 
+            ["14:00-14:50", "15:00-15:50", "16:00-16:50", "17:00-17:50", "18:00-18:50"];
+        
+        const lunchTime = isMT ? "12:51-13:59" : "13:21-13:59";
+
+        const mSlots = isMT ? theorySlots[day] : morningLabs.slice(dayIndex*6, dayIndex*6+6);
+        mSlots.forEach((s, i) => {
+            if (appState.slotToCourse[s]) classes.push({ time: mTimes[i], code: appState.slotToCourse[s] });
+        });
+
+        classes.push({ time: lunchTime, type: "lunch" });
+        
+        const eSlots = isMT ? eveningLabs.slice(dayIndex*6, dayIndex*6+6) : eveningTheorySlots[day];
+        eSlots.forEach((s, i) => {
+            if (appState.slotToCourse[s]) classes.push({ time: eTimes[i], code: appState.slotToCourse[s] });
+        });
+    }
+    
+    return classes;
+}
+
+function renderDayView(day) {
+    const list = document.getElementById('day-classes-list');
+    list.innerHTML = '';
+    
+    const classes = getClassesForDay(day);
+    
+    if (classes.length === 0 || (classes.length === 1 && classes[0].type === "lunch")) {
+        list.innerHTML = '<div class="no-classes-msg">No classes scheduled for today! 🎉</div>';
+        return;
+    }
+
+    classes.forEach(cls => {
+        if (cls.type === "lunch") {
+            const card = document.createElement('div');
+            card.className = 'day-class-card lunch-break-card';
+            card.innerHTML = `
+                <div class="day-class-info">
+                    <h3>Lunch Break</h3>
+                </div>
+                <div class="day-class-time">${cls.time}</div>
+            `;
+            list.appendChild(card);
+        } else {
+            const course = appState.courseDatabase[cls.code];
+            const color = getColor(cls.code);
+            const card = document.createElement('div');
+            card.className = 'day-class-card';
+            card.style.borderLeftColor = color;
+            card.innerHTML = `
+                <div class="day-class-info">
+                    <h3>${course.name} <span style="font-size: 0.9rem; font-weight: normal; opacity: 0.8;">(${cls.code})</span></h3>
+                    <div style="margin-top: 4px;">
+                        <span class="class-venue">${course.venue}</span>
+                    </div>
+                    <p>${course.faculty}</p>
+                </div>
+                <div class="day-class-time">${cls.time}</div>
+            `;
+            
+            card.addEventListener('click', () => {
+                openDetails(cls.code);
+            });
+            list.appendChild(card);
+        }
+    });
 }
 
 // --- LIVE INDICATOR ---
@@ -453,39 +646,43 @@ function updateLiveIndicator() {
         activeRow.classList.add('active-day');
     }
 
-    const ths = document.querySelectorAll('th[data-time]');
-    let activeColIndex = -1;
-    let isActiveClass = false;
+    const statusEl = document.getElementById('live-status');
 
-    ths.forEach((th, idx) => {
-        const range = th.getAttribute('data-time').split('-');
+    if (!activeRow) {
+        statusEl.innerText = "🟢 No classes today";
+        return;
+    }
+
+    // Find the active cell by checking data-time on body cells in the active row
+    let activeCell = null;
+    const cells = activeRow.children;
+    for (let i = 0; i < cells.length; i++) {
+        const cell = cells[i];
+        const timeStr = cell.getAttribute('data-time');
+        if (!timeStr) continue;
+        const range = timeStr.split('-');
         if (range.length === 2) {
             const start = parseInt(range[0].replace(':', ''), 10);
             const end = parseInt(range[1].replace(':', ''), 10);
             if (timeNum >= start && timeNum <= end) {
-                activeColIndex = idx + 1; // +1 because first col is DAY
-                isActiveClass = true;
+                activeCell = cell;
+                break;
             }
         }
-    });
+    }
 
-    const statusEl = document.getElementById('live-status');
-    if (activeRow && activeColIndex !== -1) {
-        // Adjust index to skip lunch if necessary
-        const cells = activeRow.children;
-        if (cells[activeColIndex]) {
-            if (cells[activeColIndex].classList.contains('lunch-col')) {
-                statusEl.innerText = "🟢 Lunch Break";
-            } else if (cells[activeColIndex].classList.contains('course-cell')) {
-                cells[activeColIndex].classList.add('live-class');
-                const code = cells[activeColIndex].getAttribute('data-code');
-                statusEl.innerText = `🟢 Live: ${code}`;
-            } else {
-                statusEl.innerText = "🟢 Free Slot";
-            }
+    if (activeCell) {
+        if (activeCell.classList.contains('lunch-col')) {
+            statusEl.innerText = "🟢 Lunch Break";
+        } else if (activeCell.classList.contains('course-cell')) {
+            activeCell.classList.add('live-class');
+            const code = activeCell.getAttribute('data-code');
+            statusEl.innerText = `🟢 Live: ${code}`;
+        } else {
+            statusEl.innerText = "🟢 Free Slot";
         }
     } else {
-        statusEl.innerText = activeRow ? "🟢 Outside hours" : "🟢 No classes today";
+        statusEl.innerText = "🟢 Outside hours";
     }
 }
 
@@ -794,4 +991,134 @@ function calculateMarks() {
     }
 
     document.getElementById('totalMarks').innerText = total.toFixed(1);
+}
+
+// --- GLOBAL ASSIGNMENTS VIEW ---
+function renderGlobalAssignments() {
+    const list = document.getElementById('global-assignments-list');
+    list.innerHTML = '';
+    
+    let allAssigns = [];
+    const now = new Date();
+    // Normalize now to start of day
+    now.setHours(0,0,0,0);
+    const twoWeeksFromNow = new Date(now.getTime() + (14 * 24 * 60 * 60 * 1000));
+    
+    // Collect from all courses
+    for (const code in appState.courseDatabase) {
+        if (!appState.courseMetadata[code] || !appState.courseMetadata[code].assignments) continue;
+        
+        const assignments = appState.courseMetadata[code].assignments;
+        const color = getColor(code);
+        const courseName = appState.courseDatabase[code].name;
+
+        assignments.forEach((item, index) => {
+            if (item.done) return; // Skip completed
+            if (!item.date) return; // Skip if no date set
+            
+            const [y, m, d] = item.date.split('-');
+            const due = new Date(y, m - 1, d);
+            
+            // Allow overdue or within 14 days
+            if (due <= twoWeeksFromNow) {
+                const diffTime = Math.round((due - now) / (1000 * 60 * 60 * 24));
+                allAssigns.push({
+                    courseCode: code,
+                    courseName,
+                    color,
+                    title: item.title,
+                    dueDate: due,
+                    dateStr: item.date,
+                    diffTime,
+                    origIndex: index
+                });
+            }
+        });
+    }
+
+    // Sort by nearest first
+    allAssigns.sort((a, b) => a.dueDate - b.dueDate);
+
+    if (allAssigns.length === 0) {
+        list.innerHTML = '<div class="no-classes-msg">No upcoming assignments in the next 14 days! 🎉</div>';
+        return;
+    }
+
+    allAssigns.forEach(task => {
+        let isDueSoon = false;
+        let isOverdue = false;
+        let dueLabel = "";
+
+        if (task.diffTime < 0) {
+            isOverdue = true;
+            dueLabel = "Overdue";
+        } else if (task.diffTime === 0) {
+            isDueSoon = true;
+            dueLabel = "Due Today";
+        } else if (task.diffTime === 1) {
+            isDueSoon = true;
+            dueLabel = "Due Tomorrow";
+        } else {
+            isDueSoon = (task.diffTime <= 3);
+            dueLabel = `Due in ${task.diffTime} days`;
+        }
+
+        const card = document.createElement('div');
+        card.className = `day-class-card ${isOverdue ? 'overdue-card' : ''}`;
+        card.style.borderLeftColor = task.color;
+        card.style.display = 'flex';
+        card.style.flexDirection = 'row';
+        card.style.justifyContent = 'space-between';
+        card.style.alignItems = 'center';
+        card.style.flexWrap = 'wrap';
+        card.style.gap = '15px';
+        
+        if (isOverdue) {
+            card.style.borderLeftColor = '#dc2626'; // Vivid Red
+        } else if (isDueSoon) {
+            card.style.borderLeftColor = '#ea580c'; // Vivid Orange
+        }
+        
+        card.innerHTML = `
+            <div class="day-class-info" style="flex: 1; min-width: 200px;">
+                <h3 style="display:flex; align-items:center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;">
+                    ${task.title}
+                    <span class="due-badge ${isOverdue ? 'badge-overdue' : (isDueSoon ? 'badge-soon' : 'badge-normal')}" style="font-size:0.75rem;">${dueLabel}</span>
+                </h3>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                    <span class="class-venue" style="background: ${task.color}; color: #111827; padding: 4px 10px; font-weight: 800;">${task.courseCode}</span>
+                    <span style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">${task.courseName}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 600; color: var(--text-secondary);">
+                    <span>📅</span> 
+                    <span>Due Date: ${new Date(task.dueDate).toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap: 8px; min-width: 120px;">
+                <button class="mark-done-btn" style="background: var(--success-bg); color: var(--success-text); border: 1px solid #86efac; padding: 10px 15px; border-radius: 10px; cursor:pointer; font-weight:700; transition: all 0.2s;">✓ Complete</button>
+                <button class="open-course-btn" style="background: var(--bg-input); color: var(--text-main); border: 1px solid var(--border-color); padding: 10px 15px; border-radius: 10px; cursor:pointer; font-weight:700; transition: all 0.2s;">Open Hub</button>
+            </div>
+        `;
+        
+        const markDoneBtn = card.querySelector('.mark-done-btn');
+        markDoneBtn.addEventListener('mouseover', () => markDoneBtn.style.filter = 'brightness(0.9)');
+        markDoneBtn.addEventListener('mouseout', () => markDoneBtn.style.filter = 'brightness(1)');
+        markDoneBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            appState.courseMetadata[task.courseCode].assignments[task.origIndex].done = true;
+            saveMeta();
+            renderGlobalAssignments();
+        });
+
+        const detailsBtn = card.querySelector('.open-course-btn');
+        detailsBtn.addEventListener('mouseover', () => detailsBtn.style.filter = 'brightness(0.9)');
+        detailsBtn.addEventListener('mouseout', () => detailsBtn.style.filter = 'brightness(1)');
+        detailsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openDetails(task.courseCode);
+            setTimeout(() => switchTab('assignments'), 50);
+        });
+
+        list.appendChild(card);
+    });
 }

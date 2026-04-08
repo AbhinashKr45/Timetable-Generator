@@ -57,14 +57,34 @@
                     <h1 class="welcome-text">Hello, <span id="display-name" class="highlight-name">Student</span>.</h1>
                     <p class="welcome-sub">Here is your schedule. <span id="live-status" class="live-status"></span></p>
                 </div>
-                <button id="reset-btn" class="reset-btn">Reset & Edit</button>
+                <div class="action-buttons">
+                    <button id="toggle-view-btn" class="view-btn">Day View</button>
+                    <button id="tasks-btn" class="view-btn">Tasks</button>
+                    <button id="reset-btn" class="reset-btn">Reset</button>
+                </div>
             </div>
 
-            <div class="table-container">
+            <div class="table-container" id="table-container">
                 <table id="timetable">
                     <thead id="head"></thead>
                     <tbody id="body"></tbody>
                 </table>
+            </div>
+
+            <div id="day-view" class="day-view hidden">
+                <div class="day-toggle-container">
+                    <button class="day-btn active" data-day="MON">Mon</button>
+                    <button class="day-btn" data-day="TUE">Tue</button>
+                    <button class="day-btn" data-day="WED">Wed</button>
+                    <button class="day-btn" data-day="THU">Thu</button>
+                    <button class="day-btn" data-day="FRI">Fri</button>
+                </div>
+                <div id="day-classes-list" class="day-classes-list"></div>
+            </div>
+
+            <div id="assignments-view" class="assignments-view hidden">
+                <h2 style="margin-bottom: 20px; font-size: 1.5rem; color: white;">Upcoming Tasks (Next 14 Days)</h2>
+                <div id="global-assignments-list" class="day-classes-list"></div>
             </div>
         </div>
     </div>
